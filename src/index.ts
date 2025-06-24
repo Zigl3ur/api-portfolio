@@ -25,6 +25,8 @@ app.get("/api/music", async (c) => {
   const timeStart = Date.now();
 
   if (cache && timeStart - cache.timestamp < 30000) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     return c.json(cache.data, 200, {
       "Content-Type": "application/json",
     });
