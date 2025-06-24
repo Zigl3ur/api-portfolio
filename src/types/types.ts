@@ -38,3 +38,8 @@ export type MusicJsonType = {
     url: string;
   };
 };
+
+export type CacheType = {
+  data: MusicJsonType;
+  timestamp: number;
+};

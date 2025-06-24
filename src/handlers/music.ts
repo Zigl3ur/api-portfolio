@@ -20,7 +20,8 @@ export async function LastFMHandler(LASTFM_API_KEY: string) {
         artist: tracks[0].artist["#text"],
         album: tracks[0].album["#text"],
         name: tracks[0].name,
-        image: tracks[0].image.find((img) => img.size === "large")?.["#text"],
+        image:
+          tracks[0].image.find((img) => img.size === "large")?.["#text"] || "",
         url: tracks[0].url,
       },
     };

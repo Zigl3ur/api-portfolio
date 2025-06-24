@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { LastFMHandler } from "./handlers/music";
 import { cors } from "hono/cors";
+import { CacheType } from "./types/types";
 
 type Bindings = {
   LASTFM_API_KEY: string;
@@ -17,10 +18,24 @@ app.use(
   })
 );
 
+let cache: CacheType = { data: { isListening: false }, timestamp: 0 };
+
 app.get("/api/music", async (c) => {
   const LASTFM_API_KEY = c.env.LASTFM_API_KEY;
+  const timeStart = Date.now();
+
+  if (cache && timeStart - cache.timestamp < 30000) {
+    return c.json(cache.data, 200, {
+      "Content-Type": "application/json",
+    });
+  }
 
   const json = await LastFMHandler(LASTFM_API_KEY);
+
+  cache = {
+    data: json,
+    timestamp: timeStart,
+  };
 
   return c.json(json, 200, {
     "Content-Type": "application/json",
