@@ -1,21 +1,3 @@
-```txt
-npm install
-npm run dev
-```
+## Api for my portfolio website
 
-```txt
-npm run deploy
-```
-
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
-
-```txt
-npm run cf-typegen
-```
-
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
-
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+- `/api/music` fetch lastfm to get the music im listenning to 
