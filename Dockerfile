@@ -1,17 +1,18 @@
-FROM oven/bun:alpine AS builder
+FROM golang:1.24.6-alpine AS base
 
 WORKDIR /app
-COPY src ./
-COPY package.json bun.lock ./
 
-RUN bun install --production
-RUN bun build index.ts --outdir=dist --target=bun
+COPY go.mod go.sum ./
+RUN go mod download
 
-FROM oven/bun:alpine AS runner
+COPY . .
+
+RUN go build -o main .
+
+FROM golang:1.24.6-alpine AS runner
 
 WORKDIR /app
-COPY --from=builder /app/dist .
 
-EXPOSE 3000
-ENV NODE_ENV=production
-CMD ["bun", "index.js"]
+COPY --from=base /app/main .
+
+CMD ["/app/main"]
