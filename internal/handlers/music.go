@@ -8,22 +8,22 @@ import (
 )
 
 type cacheData struct {
-	data      *lastfm.FormatedData
-	timestamp int64
+	data *lastfm.FormatedData
+	time time.Time
 }
 
 var cache = &cacheData{
 	data: &lastfm.FormatedData{
 		IsListenning: false,
 	},
-	timestamp: 0,
+	time: time.Time{},
 }
 
 func MusicHandler(c *fiber.Ctx, apiKey string) error {
 
 	start := time.Now()
 
-	if cache.timestamp != 0 && time.Since(time.Unix(cache.timestamp, 0)) < 30*time.Second {
+	if !cache.time.IsZero() && time.Since(cache.time) < 30*time.Second {
 		c.Set("X-Cached", "true")
 		c.JSON(cache.data)
 		return nil
@@ -35,7 +35,7 @@ func MusicHandler(c *fiber.Ctx, apiKey string) error {
 	}
 
 	cache.data = data
-	cache.timestamp = start.Unix()
+	cache.time = start
 
 	c.JSON(data)
 	return nil
