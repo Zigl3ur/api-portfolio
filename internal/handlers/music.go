@@ -22,6 +22,7 @@ var cache = &cacheData{
 func MusicHandler(c *fiber.Ctx, apiKey string) error {
 
 	start := time.Now()
+	c.Accepts("application/json")
 
 	if !cache.time.IsZero() && time.Since(cache.time) < 30*time.Second {
 		c.Set("X-Cached", "true")
