@@ -56,6 +56,7 @@ func MusicHandler(apiKey string) (*FormatedData, error) {
 		return dataFormat, err
 	}
 
+	//nolint:errcheck
 	defer resp.Body.Close()
 
 	tracks := data.RecentTracks.Track

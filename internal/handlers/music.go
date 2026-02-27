@@ -26,8 +26,7 @@ func MusicHandler(c *fiber.Ctx, apiKey string) error {
 
 	if !cache.time.IsZero() && time.Since(cache.time) < 30*time.Second {
 		c.Set("X-Cached", "true")
-		c.JSON(cache.data)
-		return nil
+		return c.JSON(cache.data)
 	}
 
 	data, err := lastfm.MusicHandler(apiKey)
@@ -38,6 +37,5 @@ func MusicHandler(c *fiber.Ctx, apiKey string) error {
 	cache.data = data
 	cache.time = start
 
-	c.JSON(data)
-	return nil
+	return c.JSON(data)
 }
