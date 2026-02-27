@@ -1,0 +1,36 @@
+name: CI
+
+on:
+    push:
+        branches:
+            - develop
+    pull_request:
+
+jobs:
+    golangci:
+        name: lint
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: actions/setup-go@v6
+              with:
+                  go-version-file: go.mod
+            - name: golangci-lint
+              uses: golangci/golangci-lint-action@v9
+              with:
+                  version: v2.6
+    build:
+        name: build
+        needs: golangci
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: actions/setup-go@v6
+              with:
+                  go-version: stable
+
+            - name: install deps
+              run: go mod download
+
+            - name: run build
+              run: go build
