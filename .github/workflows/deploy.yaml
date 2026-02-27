@@ -4,8 +4,6 @@ on:
     push:
         branches:
             - main
-            # to test the action
-            - deploy/test
     workflow_dispatch:
 
 jobs:
