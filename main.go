@@ -14,7 +14,11 @@ import (
 
 func main() {
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		TrustedProxies:          []string{"192.168.1.188"},
+		EnableTrustedProxyCheck: true,
+		ProxyHeader:             "Cf-Connecting-Ip",
+	})
 
 	port, ok := os.LookupEnv("PORT")
 	if !ok {
@@ -31,7 +35,8 @@ func main() {
 	}
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
+		AllowOrigins: "https://eden.douru.fr, http://localhost:3000",
+		AllowHeaders: "Origin, Content-Type, Accept",
 	}))
 
 	app.Get("/music", func(c *fiber.Ctx) error {
@@ -39,7 +44,7 @@ func main() {
 	})
 
 	messageLimiter := limiter.New(limiter.Config{
-		Max:        3,
+		Max:        2,
 		Expiration: time.Hour * 24 * 7, // 1 week
 		LimitReached: func(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{

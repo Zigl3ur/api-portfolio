@@ -68,7 +68,7 @@ func MessageHandler(c *fiber.Ctx, webhookUrl string) error {
 
 	webHookData := fiber.Map{
 		"username": "Portfolio",
-		"content":  fmt.Sprintf("**Name:** %s\n**Email:** %s\n**Subject:** %s\n**Message:** %s", d.Name, d.Email, d.Subject, d.Message),
+		"content":  fmt.Sprintf("**IP:** %s\n**Name:** %s\n**Email:** %s\n**Subject:** %s\n**Message:** %s", c.IP(), d.Name, d.Email, d.Subject, d.Message),
 	}
 
 	payload, err := c.App().Config().JSONEncoder(webHookData)
