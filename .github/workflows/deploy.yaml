@@ -1,4 +1,4 @@
-name: Deploy via Tailscale
+name: Deploy
 
 on:
     push:
@@ -30,6 +30,6 @@ jobs:
                     docker run -d \
                         --name api-portfolio \
                         -e LASTFM_API_KEY=${{secrets.LASTFM_API_KEY}} \
-                        -e DISCORD_WEBHOOK_URL=${{secrets.DISCORD_WEBHOOK_URL}} \
+                        -e DISCORD_WEBHOOK=${{secrets.DISCORD_WEBHOOK_URL}} \
                         -p 2005:8080 api-portfolio
                   EOF
