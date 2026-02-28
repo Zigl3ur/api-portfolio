@@ -3,8 +3,9 @@ package lastfm
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
+
+	"github.com/gofiber/fiber/v3/client"
 )
 
 type lasfmData struct {
@@ -46,19 +47,18 @@ func MusicHandler(apiKey string) (*FormatedData, error) {
 		IsListening: false,
 	}
 
-	resp, err := http.Get(fmt.Sprintf("https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=zigl3ur&api_key=%s&format=json", apiKey))
-
+	cc := client.New()
+	resp, err := cc.Get(fmt.Sprintf("https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=zigl3ur&api_key=%s&format=json", apiKey))
 	if err != nil {
 		return dataFormat, err
 	}
 
+	defer resp.Close()
+
 	var data lasfmData
-	if err = json.NewDecoder(resp.Body).Decode(&data); err != nil {
+	if err = json.Unmarshal(resp.Body(), &data); err != nil {
 		return dataFormat, err
 	}
-
-	//nolint:errcheck
-	defer resp.Body.Close()
 
 	tracks := data.RecentTracks.Track
 	dataFormat.IsListening = len(tracks) > 0 && tracks[0].Attr.IsPlaying == "true"

@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
-	"net/mail"
 	"time"
-	"unicode/utf8"
 
+	z "github.com/Oudwins/zog"
 	"github.com/Zigl3ur/api-portfolio/internal/config"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/client"
@@ -14,10 +12,10 @@ import (
 )
 
 type contactData struct {
-	Name    string `json:"name"`
-	Email   string `json:"email"`
-	Subject string `json:"subject"`
-	Message string `json:"message"`
+	Name    string `json:"name,omitempty"`
+	Email   string `json:"email,omitempty"`
+	Subject string `json:"subject,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 var MessageLimiter = limiter.New(limiter.Config{
@@ -38,34 +36,12 @@ func NewMessageHandler(cfg *config.Config) *MessageHandler {
 	return &MessageHandler{cfg: cfg}
 }
 
-func validateData(data *contactData) error {
-	nameLength := utf8.RuneCountInString(data.Name)
-	subjectLength := utf8.RuneCountInString(data.Subject)
-	messageLength := utf8.RuneCountInString(data.Message)
-
-	if nameLength < 2 {
-		return errors.New("name must be at least 2 char long")
-	} else if nameLength > 15 {
-		return errors.New("name must be at most 15 char long")
-	}
-
-	if _, err := mail.ParseAddress(data.Email); err != nil {
-		return errors.New("email is invalid")
-	}
-
-	if subjectLength < 5 {
-		return errors.New("subject must be at least 5 char long")
-	} else if subjectLength > 100 {
-		return errors.New("subject must be at most 100 char long")
-	}
-	if messageLength < 10 {
-		return errors.New("message must be at least 10 char long")
-	} else if messageLength > 1500 {
-		return errors.New("message must be at most 1500 char long")
-	}
-
-	return nil
-}
+var messageSchema = z.Struct(z.Shape{
+	"name":    z.String().Min(2, z.Message("name must be at least 2 characters long")).Max(15, z.Message("name must be at most 15 characters long")).Required(z.Message("name is required")),
+	"email":   z.String().Email(z.Message("email is invalid")).Required(z.Message("email is required")),
+	"subject": z.String().Min(5, z.Message("subject must be at least 5 characters long")).Max(100, z.Message("subject must be at most 100 characters long")).Required(z.Message("subject is required")),
+	"message": z.String().Min(10, z.Message("message must be at least 10 characters long")).Max(1500, z.Message("message must be at most 1500 characters long")).Required(z.Message("message is required")),
+})
 
 func (h *MessageHandler) Handler(c fiber.Ctx) error {
 	d := new(contactData)
@@ -74,11 +50,9 @@ func (h *MessageHandler) Handler(c fiber.Ctx) error {
 		return err
 	}
 
-	err := validateData(d)
-
-	if err != nil {
+	if parsed := messageSchema.Validate(d); len(parsed) > 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
+			"error": z.Issues.Flatten(parsed),
 		})
 	}
 
@@ -88,7 +62,7 @@ func (h *MessageHandler) Handler(c fiber.Ctx) error {
 	}
 
 	cc := client.New()
-	if _, err = cc.Post(h.cfg.DiscordWebhook, client.Config{
+	if _, err := cc.Post(h.cfg.DiscordWebhook, client.Config{
 		Body: webHookData,
 	}); err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{

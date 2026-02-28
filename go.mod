@@ -3,6 +3,7 @@ module github.com/Zigl3ur/api-portfolio
 go 1.25.7
 
 require (
+	github.com/Oudwins/zog v0.22.0
 	github.com/gofiber/fiber/v3 v3.1.0
 	github.com/joho/godotenv v1.5.1
 )
@@ -22,6 +23,7 @@ require (
 	github.com/valyala/fasthttp v1.69.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
