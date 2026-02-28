@@ -22,7 +22,6 @@ jobs:
                   version: v2.6
     build:
         name: build
-        needs: golangci
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v6
