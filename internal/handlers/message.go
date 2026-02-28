@@ -1,16 +1,15 @@
 package handlers
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/mail"
 	"time"
 	"unicode/utf8"
 
 	"github.com/Zigl3ur/api-portfolio/internal/config"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/client"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 )
 
@@ -88,15 +87,10 @@ func (h *MessageHandler) Handler(c fiber.Ctx) error {
 		"content":  fmt.Sprintf("**IP:** %s\n**Name:** %s\n**Email:** %s\n**Subject:** %s\n**Message:** %s", c.IP(), d.Name, d.Email, d.Subject, d.Message),
 	}
 
-	payload, err := c.App().Config().JSONEncoder(webHookData)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to encode webhook data",
-		})
-	}
-
-	_, err = http.Post(h.cfg.DiscordWebhook, "application/json", bytes.NewReader(payload))
-	if err != nil {
+	cc := client.New()
+	if _, err = cc.Post(h.cfg.DiscordWebhook, client.Config{
+		Body: webHookData,
+	}); err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"error": "Failed to send data to webhook",
 		})
