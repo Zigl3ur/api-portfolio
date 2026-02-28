@@ -15,4 +15,6 @@ WORKDIR /app
 
 COPY --from=base /app/main .
 
+ENV APP_ENV=production
+
 CMD ["/app/main"]

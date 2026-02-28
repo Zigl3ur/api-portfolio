@@ -15,7 +15,7 @@ type cacheData struct {
 
 var cache = &cacheData{
 	data: &lastfm.FormatedData{
-		IsListenning: false,
+		IsListening: false,
 	},
 	time: time.Time{},
 }

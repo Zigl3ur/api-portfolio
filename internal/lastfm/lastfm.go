@@ -30,20 +30,20 @@ type lasfmData struct {
 }
 
 type FormatedData struct {
-	IsListenning bool `json:"isListening"`
-	Track        struct {
+	IsListening bool `json:"isListening"`
+	Track       *struct {
 		Artist    string `json:"artist,omitempty"`
 		Album     string `json:"album,omitempty"`
 		TrackName string `json:"name,omitempty"`
 		Image     string `json:"image,omitempty"`
 		Url       string `json:"url,omitempty"`
-	} `json:"track"`
+	} `json:"track,omitempty"`
 }
 
 func MusicHandler(apiKey string) (*FormatedData, error) {
 
 	dataFormat := &FormatedData{
-		IsListenning: false,
+		IsListening: false,
 	}
 
 	resp, err := http.Get(fmt.Sprintf("https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=zigl3ur&api_key=%s&format=json", apiKey))
@@ -61,9 +61,9 @@ func MusicHandler(apiKey string) (*FormatedData, error) {
 	defer resp.Body.Close()
 
 	tracks := data.RecentTracks.Track
-	dataFormat.IsListenning = len(tracks) > 0 && tracks[0].Attr.IsPlaying == "true"
+	dataFormat.IsListening = len(tracks) > 0 && tracks[0].Attr.IsPlaying == "true"
 
-	if dataFormat.IsListenning {
+	if dataFormat.IsListening {
 		if len(tracks[0].Images) > 0 {
 			for i := range tracks[0].Images {
 				if tracks[0].Images[i].Size == "large" {
