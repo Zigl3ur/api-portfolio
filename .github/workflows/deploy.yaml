@@ -1,0 +1,33 @@
+name: Deploy
+
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Connect to Tailscale
+              uses: tailscale/github-action@v4
+              with:
+                  oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+                  oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+                  tags: tag:ci
+
+            - name: Deploy
+              run: |
+                  ssh -o StrictHostKeyChecking=no ${{secrets.USER}}@${{secrets.HOST}} << 'EOF'
+                    cd ${{secrets.WORKING_DIR}}
+                    git pull origin main
+                    docker build -t api-portfolio .
+                    docker stop api-portfolio
+                    docker rm api-portfolio
+                    docker run -d \
+                        --name api-portfolio \
+                        -e LASTFM_API_KEY=${{secrets.LASTFM_API_KEY}} \
+                        -e DISCORD_WEBHOOK=${{secrets.DISCORD_WEBHOOK_URL}} \
+                        -p 2005:8080 api-portfolio
+                  EOF

@@ -1,94 +1,74 @@
 package handlers
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"net/http"
-	"net/mail"
-	"unicode/utf8"
+	"time"
 
-	"github.com/gofiber/fiber/v2"
+	z "github.com/Oudwins/zog"
+	"github.com/Zigl3ur/api-portfolio/internal/config"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/client"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 )
 
 type contactData struct {
-	Name    string `json:"name"`
-	Email   string `json:"email"`
-	Subject string `json:"subject"`
-	Message string `json:"message"`
+	Name    string `json:"name,omitempty"`
+	Email   string `json:"email,omitempty"`
+	Subject string `json:"subject,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
-func validateData(data *contactData) error {
-	nameLength := utf8.RuneCountInString(data.Name)
-	subjectLength := utf8.RuneCountInString(data.Subject)
-	messageLength := utf8.RuneCountInString(data.Message)
+var MessageLimiter = limiter.New(limiter.Config{
+	Max:        2,
+	Expiration: time.Hour * 24 * 7, // 1 week
+	LimitReached: func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+			"error": "Rate limit reached. Try again later.",
+		})
+	},
+})
 
-	if nameLength < 2 {
-		return errors.New("Name must be at least 2 char long")
-	} else if nameLength > 15 {
-		return errors.New("Name must be at most 15 char long")
-	}
-
-	if _, err := mail.ParseAddress(data.Email); err != nil {
-		return errors.New("Email is invalid")
-	}
-
-	if subjectLength < 5 {
-		return errors.New("Subject must be at least 5 char long")
-	} else if subjectLength > 100 {
-		return errors.New("Name must be at most 100 char long")
-	}
-	if messageLength < 10 {
-		return errors.New("Message must be at least 10 char long")
-	} else if messageLength > 1500 {
-		return errors.New("Message must be at most 1500 char long")
-	}
-
-	return nil
+type MessageHandler struct {
+	cfg *config.Config
 }
 
-func MessageHandler(c *fiber.Ctx, webhookUrl string) error {
-	c.Accepts("application/json")
+func NewMessageHandler(cfg *config.Config) *MessageHandler {
+	return &MessageHandler{cfg: cfg}
+}
 
-	d := &contactData{}
+var messageSchema = z.Struct(z.Shape{
+	"name":    z.String().Min(2, z.Message("name must be at least 2 characters long")).Max(15, z.Message("name must be at most 15 characters long")).Required(z.Message("name is required")),
+	"email":   z.String().Email(z.Message("email is invalid")).Required(z.Message("email is required")),
+	"subject": z.String().Min(5, z.Message("subject must be at least 5 characters long")).Max(100, z.Message("subject must be at most 100 characters long")).Required(z.Message("subject is required")),
+	"message": z.String().Min(10, z.Message("message must be at least 10 characters long")).Max(1500, z.Message("message must be at most 1500 characters long")).Required(z.Message("message is required")),
+})
 
-	if err := c.BodyParser(d); err != nil {
+func (h *MessageHandler) Handler(c fiber.Ctx) error {
+	d := new(contactData)
+
+	if err := c.Bind().Body(d); err != nil {
 		return err
 	}
 
-	err := validateData(d)
-
-	if err != nil {
-		c.Status(fiber.StatusBadRequest)
-		c.JSON(fiber.Map{
-			"error": err.Error(),
+	if parsed := messageSchema.Validate(d); len(parsed) > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": z.Issues.Flatten(parsed),
 		})
-		return nil
 	}
 
 	webHookData := fiber.Map{
 		"username": "Portfolio",
-		"content":  fmt.Sprintf("**Name:** %s\n**Email:** %s\n**Subject:** %s\n**Message:** %s", d.Name, d.Email, d.Subject, d.Message),
+		"content":  fmt.Sprintf("**IP:** %s\n**Name:** %s\n**Email:** %s\n**Subject:** %s\n**Message:** %s", c.IP(), d.Name, d.Email, d.Subject, d.Message),
 	}
 
-	payload, err := c.App().Config().JSONEncoder(webHookData)
-	if err != nil {
-		c.Status(fiber.StatusInternalServerError)
-		c.JSON(fiber.Map{
-			"error": "Failed to encode webhook data",
-		})
-		return nil
-	}
-
-	_, err = http.Post(webhookUrl, "application/json", bytes.NewReader(payload))
-	if err != nil {
-		c.Status(fiber.StatusBadGateway)
-		c.JSON(fiber.Map{
+	cc := client.New()
+	if _, err := cc.Post(h.cfg.DiscordWebhook, client.Config{
+		Body: webHookData,
+	}); err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"error": "Failed to send data to webhook",
 		})
-		return nil
 	}
 
-	c.SendStatus(fiber.StatusOK)
-	return nil
+	return c.SendStatus(fiber.StatusOK)
 }

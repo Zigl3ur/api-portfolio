@@ -1,6 +1,8 @@
 .dockerignore
 .gitignore
 .git
-
-tmp/
+.env*
 README.md
+
+.github/
+tmp/
