@@ -31,14 +31,16 @@ type lasfmData struct {
 }
 
 type FormatedData struct {
-	IsListening bool `json:"isListening"`
-	Track       *struct {
-		Artist    string `json:"artist,omitempty"`
-		Album     string `json:"album,omitempty"`
-		TrackName string `json:"name,omitempty"`
-		Image     string `json:"image,omitempty"`
-		Url       string `json:"url,omitempty"`
-	} `json:"track,omitempty"`
+	IsListening bool   `json:"isListening"`
+	Track       *Track `json:"track,omitempty"`
+}
+
+type Track struct {
+	Artist    string `json:"artist"`
+	Album     string `json:"album"`
+	TrackName string `json:"name"`
+	Image     string `json:"image"`
+	Url       string `json:"url"`
 }
 
 func MusicHandler(apiKey string) (*FormatedData, error) {
@@ -64,6 +66,13 @@ func MusicHandler(apiKey string) (*FormatedData, error) {
 	dataFormat.IsListening = len(tracks) > 0 && tracks[0].Attr.IsPlaying == "true"
 
 	if dataFormat.IsListening {
+		dataFormat.Track = &Track{
+			Artist:    tracks[0].Artist.Name,
+			Album:     tracks[0].Album.Name,
+			TrackName: tracks[0].TrackName,
+			Url:       tracks[0].TrackUrl,
+		}
+
 		if len(tracks[0].Images) > 0 {
 			for i := range tracks[0].Images {
 				if tracks[0].Images[i].Size == "large" {
@@ -72,11 +81,6 @@ func MusicHandler(apiKey string) (*FormatedData, error) {
 				}
 			}
 		}
-
-		dataFormat.Track.TrackName = tracks[0].TrackName
-		dataFormat.Track.Album = tracks[0].Album.Name
-		dataFormat.Track.Artist = tracks[0].Artist.Name
-		dataFormat.Track.Url = tracks[0].TrackUrl
 	}
 
 	return dataFormat, nil
