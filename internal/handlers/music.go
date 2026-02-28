@@ -3,8 +3,9 @@ package handlers
 import (
 	"time"
 
+	"github.com/Zigl3ur/api-portfolio/internal/config"
 	"github.com/Zigl3ur/api-portfolio/internal/lastfm"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type cacheData struct {
@@ -19,17 +20,23 @@ var cache = &cacheData{
 	time: time.Time{},
 }
 
-func MusicHandler(c *fiber.Ctx, apiKey string) error {
+type MusicHandler struct {
+	cfg *config.Config
+}
 
+func NewMusicHandler(cfg *config.Config) *MusicHandler {
+	return &MusicHandler{cfg: cfg}
+}
+
+func (h *MusicHandler) Handler(c fiber.Ctx) error {
 	start := time.Now()
-	c.Accepts("application/json")
 
 	if !cache.time.IsZero() && time.Since(cache.time) < 30*time.Second {
 		c.Set("X-Cached", "true")
 		return c.JSON(cache.data)
 	}
 
-	data, err := lastfm.MusicHandler(apiKey)
+	data, err := lastfm.MusicHandler(h.cfg.LastfmApiKey)
 	if err != nil {
 		return err
 	}

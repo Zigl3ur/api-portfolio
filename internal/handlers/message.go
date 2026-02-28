@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/mail"
+	"time"
 	"unicode/utf8"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/Zigl3ur/api-portfolio/internal/config"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 )
 
 type contactData struct {
@@ -16,6 +19,24 @@ type contactData struct {
 	Email   string `json:"email"`
 	Subject string `json:"subject"`
 	Message string `json:"message"`
+}
+
+var MessageLimiter = limiter.New(limiter.Config{
+	Max:        2,
+	Expiration: time.Hour * 24 * 7, // 1 week
+	LimitReached: func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+			"error": "Rate limit reached. Try again later.",
+		})
+	},
+})
+
+type MessageHandler struct {
+	cfg *config.Config
+}
+
+func NewMessageHandler(cfg *config.Config) *MessageHandler {
+	return &MessageHandler{cfg: cfg}
 }
 
 func validateData(data *contactData) error {
@@ -47,12 +68,10 @@ func validateData(data *contactData) error {
 	return nil
 }
 
-func MessageHandler(c *fiber.Ctx, webhookUrl string) error {
-	c.Accepts("application/json")
+func (h *MessageHandler) Handler(c fiber.Ctx) error {
+	d := new(contactData)
 
-	d := &contactData{}
-
-	if err := c.BodyParser(d); err != nil {
+	if err := c.Bind().Body(d); err != nil {
 		return err
 	}
 
@@ -76,7 +95,7 @@ func MessageHandler(c *fiber.Ctx, webhookUrl string) error {
 		})
 	}
 
-	_, err = http.Post(webhookUrl, "application/json", bytes.NewReader(payload))
+	_, err = http.Post(h.cfg.DiscordWebhook, "application/json", bytes.NewReader(payload))
 	if err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"error": "Failed to send data to webhook",

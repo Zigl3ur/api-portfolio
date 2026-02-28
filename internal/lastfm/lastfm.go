@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type lasfmData struct {
@@ -66,7 +67,7 @@ func MusicHandler(apiKey string) (*FormatedData, error) {
 		if len(tracks[0].Images) > 0 {
 			for i := range tracks[0].Images {
 				if tracks[0].Images[i].Size == "large" {
-					dataFormat.Track.Image = tracks[0].Images[i].Url
+					dataFormat.Track.Image = getAr0ImageUrl(tracks[0].Images[i].Url)
 					break
 				}
 			}
@@ -79,4 +80,15 @@ func MusicHandler(apiKey string) (*FormatedData, error) {
 	}
 
 	return dataFormat, nil
+}
+
+// we replace the tag '174s' with 'ar0' in the image url to have a better quality,
+// it doesnt seems that we can get it from the api directly
+func getAr0ImageUrl(baseImage string) string {
+	parts := strings.Split(baseImage, "174s")
+	if len(parts) != 2 {
+		return baseImage
+	}
+
+	return strings.Join(parts, "ar0")
 }
