@@ -22,16 +22,8 @@ func main() {
 		ProxyHeader: "Cf-Connecting-Ip",
 	})
 
-	allowedOrigins := []string{
-		"https://eden.douru.fr",
-	}
-
-	if cfg.Env == "development" {
-		allowedOrigins = append(allowedOrigins, "http://localhost:3000")
-	}
-
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: allowedOrigins,
+		AllowOrigins: []string{"https://eden.douru.fr"},
 		AllowHeaders: []string{"Origin", "Content-Type", "Accept"},
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 	}))
