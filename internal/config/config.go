@@ -36,7 +36,7 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Env:            AppEnv,
+		Env:            os.Getenv("APP_ENV"),
 		Port:           port,
 		LastfmApiKey:   os.Getenv("LASTFM_API_KEY"),
 		DiscordWebhook: os.Getenv("DISCORD_WEBHOOK"),
