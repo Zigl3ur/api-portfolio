@@ -25,7 +25,7 @@ func main() {
 		"https://eden.douru.fr",
 	}
 
-	if cfg.Env == "development" {
+	if cfg.Env == "development" || cfg.Env == "" {
 		allowedOrigins = append(allowedOrigins, "http://localhost:3000")
 	}
 

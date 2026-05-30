@@ -29,5 +29,6 @@ jobs:
                         --name api-portfolio \
                         -e LASTFM_API_KEY=${{secrets.LASTFM_API_KEY}} \
                         -e DISCORD_WEBHOOK=${{secrets.DISCORD_WEBHOOK_URL}} \
+                        --restart unless-stopped \
                         -p 2005:8080 api-portfolio
                   EOF
