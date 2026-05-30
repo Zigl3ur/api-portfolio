@@ -14,7 +14,8 @@ func main() {
 	cfg := config.Load()
 
 	app := fiber.New(fiber.Config{
-		AppName: "api-portfolio",
+		AppName:    "api-portfolio",
+		TrustProxy: true,
 		TrustProxyConfig: fiber.TrustProxyConfig{
 			Proxies: []string{"192.168.1.188"},
 		},
