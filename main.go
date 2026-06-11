@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/Zigl3ur/api-portfolio/internal/cache"
 	"github.com/Zigl3ur/api-portfolio/internal/config"
 	"github.com/Zigl3ur/api-portfolio/internal/handlers"
 	"github.com/gofiber/fiber/v3"
@@ -12,6 +13,8 @@ import (
 
 func main() {
 	cfg := config.Load()
+
+	cache := cache.NewCache()
 
 	app := fiber.New(fiber.Config{
 		AppName:    "api-portfolio",
@@ -36,10 +39,14 @@ func main() {
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 	}))
 
-	musicHandler := handlers.NewMusicHandler(cfg)
+	musicHandler := handlers.NewMusicHandler(cfg, cache)
 	messageHandler := handlers.NewMessageHandler(cfg)
 
-	app.Get("/music", musicHandler.Handler)
+	musicGroup := app.Group("/music")
+	musicGroup.Get("/currently-listening", musicHandler.CurrentlyListening)
+	musicGroup.Get("/top-albums", musicHandler.TopAlbums)
+	musicGroup.Get("/album-info", musicHandler.AlbumInfo)
+
 	app.Post("/message", handlers.MessageLimiter, messageHandler.Handler)
 
 	app.Use(func(c fiber.Ctx) error {
