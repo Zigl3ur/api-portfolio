@@ -18,11 +18,13 @@ type Cache struct {
 	mu sync.Mutex
 
 	CachesEntries map[string]cacheEntry
+	maxEntries    int
 }
 
-func NewCache(ctx context.Context) *Cache {
+func NewCache(ctx context.Context, maxEntries int) *Cache {
 	cache := &Cache{
 		CachesEntries: make(map[string]cacheEntry),
+		maxEntries:    maxEntries,
 	}
 
 	go cache.EntriesCleaner(ctx)
@@ -48,6 +50,20 @@ func (c *Cache) Get(key string) any {
 func (c *Cache) Set(key string, data any, ttl time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if c.maxEntries > 0 && len(c.CachesEntries) >= c.maxEntries {
+		var oldestKey string
+		var oldestTime time.Time
+
+		for k, entry := range c.CachesEntries {
+			if oldestKey == "" || entry.At.Before(oldestTime) {
+				oldestKey, oldestTime = k, entry.At
+			}
+		}
+		if oldestKey != "" {
+			delete(c.CachesEntries, oldestKey)
+		}
+	}
 
 	c.CachesEntries[key] = cacheEntry{
 		Data: data,

@@ -37,6 +37,9 @@ type lastfmRecentTrack struct {
 			Attr      struct {
 				IsPlaying string `json:"nowplaying"`
 			} `json:"@attr"`
+			Date struct {
+				Uts string `json:"uts"`
+			} `json:"date"`
 			TrackUrl string `json:"url"`
 		} `json:"track"`
 	} `json:"recenttracks"`
@@ -47,32 +50,19 @@ type CurrentlyListening struct {
 	Track       *Track `json:"track,omitempty"`
 }
 
-type lastfmAlbumInfo struct {
-	Album struct {
-		Artist string `json:"artist"`
-
-		Tags struct {
-			Tag []struct {
+type lastfmTopAlbums struct {
+	TopAlbums struct {
+		Albums []struct {
+			Artist struct {
 				Name string `json:"name"`
-				Url  string `json:"url"`
-			} `json:"tag"`
-		} `json:"tags"`
-
-		Tracks struct {
-			Track []struct {
-				Duration int64  `json:"duration"`
-				Url      string `json:"url"`
-				Name     string `json:"name"`
-				Attr     struct {
-					Rank int64 `json:"rank"`
-				} `json:"@attr"`
-				Artist struct {
-					Url  string `json:"url"`
-					Name string `json:"name"`
-				} `json:"artist"`
-			} `json:"track"`
-		} `json:"tracks"`
-	} `json:"album"`
+			} `json:"artist"`
+			Url       string            `json:"url"`
+			AlbumName string            `json:"name"`
+			Images    []lastfmImageData `json:"image"`
+			Playcount string            `json:"playcount"`
+			Mbid      string            `json:"mbid"`
+		} `json:"album"`
+	} `json:"topalbums"`
 }
 
 type Album struct {
@@ -80,15 +70,17 @@ type Album struct {
 	Url       string `json:"url"`
 	AlbumName string `json:"name"`
 	Image     string `json:"image"`
+	Mbid      string `json:"mbid"`
 	Playcount string `json:"playcount"`
 }
 
 type Track struct {
-	Artist    string `json:"artist"`
-	Album     string `json:"album"`
-	TrackName string `json:"name"`
-	Image     string `json:"image"`
-	Url       string `json:"url"`
+	Artist     string `json:"artist"`
+	Album      string `json:"album"`
+	TrackName  string `json:"name"`
+	Image      string `json:"image"`
+	Url        string `json:"url"`
+	ListenedAt string `json:"listenedAt,omitempty"`
 }
 
 func (lfm *LastFM) GetCurrentlyPlaying() (*CurrentlyListening, error) {
@@ -112,20 +104,19 @@ func (lfm *LastFM) GetCurrentlyPlaying() (*CurrentlyListening, error) {
 	tracks := data.RecentTracks.Track
 	dataFormat.IsListening = len(tracks) > 0 && tracks[0].Attr.IsPlaying == "true"
 
-	if dataFormat.IsListening {
-		dataFormat.Track = &Track{
-			Artist:    tracks[0].Artist.Name,
-			Album:     tracks[0].Album.Name,
-			TrackName: tracks[0].TrackName,
-			Url:       tracks[0].TrackUrl,
-		}
+	dataFormat.Track = &Track{
+		Artist:     tracks[0].Artist.Name,
+		Album:      tracks[0].Album.Name,
+		TrackName:  tracks[0].TrackName,
+		Url:        tracks[0].TrackUrl,
+		ListenedAt: tracks[0].Date.Uts,
+	}
 
-		if len(tracks[0].Images) > 0 {
-			for i := range tracks[0].Images {
-				if tracks[0].Images[i].Size == "large" {
-					dataFormat.Track.Image = getAr0ImageUrl(tracks[0].Images[i].Url)
-					break
-				}
+	if len(tracks[0].Images) > 0 {
+		for i := range tracks[0].Images {
+			if tracks[0].Images[i].Size == "large" {
+				dataFormat.Track.Image = getAr0ImageUrl(tracks[0].Images[i].Url)
+				break
 			}
 		}
 	}
@@ -141,19 +132,7 @@ func (lfm *LastFM) GetTopAlbums() ([]Album, error) {
 	}
 	defer resp.Close()
 
-	var raw struct {
-		TopAlbums struct {
-			Albums []struct {
-				Artist struct {
-					Name string `json:"name"`
-				} `json:"artist"`
-				Url       string            `json:"url"`
-				AlbumName string            `json:"name"`
-				Images    []lastfmImageData `json:"image"`
-				Playcount string            `json:"playcount"`
-			} `json:"album"`
-		} `json:"topalbums"`
-	}
+	var raw lastfmTopAlbums
 
 	if err = json.Unmarshal(resp.Body(), &raw); err != nil {
 		return nil, err
@@ -166,6 +145,7 @@ func (lfm *LastFM) GetTopAlbums() ([]Album, error) {
 			Url:       a.Url,
 			AlbumName: a.AlbumName,
 			Playcount: a.Playcount,
+			Mbid:      a.Mbid,
 		}
 		for _, img := range a.Images {
 			if img.Size == "large" {
@@ -177,24 +157,6 @@ func (lfm *LastFM) GetTopAlbums() ([]Album, error) {
 	}
 
 	return albums, nil
-}
-
-func (lfm *LastFM) GetAlbumInfo(artist, album string) (*lastfmAlbumInfo, error) {
-	dataFormat := &lastfmAlbumInfo{}
-
-	cc := client.New()
-	resp, err := cc.Get(fmt.Sprintf("https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=%s&artist=%s&album=%s&format=json", lfm.ApiKey, artist, album))
-	if err != nil {
-		return dataFormat, err
-	}
-
-	defer resp.Close()
-
-	if err = json.Unmarshal(resp.Body(), &dataFormat); err != nil {
-		return dataFormat, err
-	}
-
-	return dataFormat, nil
 }
 
 // we replace the tag '174s' with 'ar0' in the image url to have a better quality,

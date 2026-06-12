@@ -16,7 +16,7 @@ func main() {
 	appCtx, cancel := context.WithCancel(context.Background())
 	cfg := config.Load()
 
-	cache := cache.NewCache(appCtx)
+	cache := cache.NewCache(appCtx, 10_000)
 
 	app := fiber.New(fiber.Config{
 		AppName:    "api-portfolio",
@@ -52,7 +52,6 @@ func main() {
 	musicGroup := app.Group("/music")
 	musicGroup.Get("/currently-listening", musicHandler.CurrentlyListening)
 	musicGroup.Get("/top-albums", musicHandler.TopAlbums)
-	musicGroup.Get("/album-info", musicHandler.AlbumInfo)
 
 	app.Post("/message", handlers.MessageLimiter, messageHandler.Handler)
 
