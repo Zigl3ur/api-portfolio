@@ -22,7 +22,7 @@ func NewMusicHandler(cfg *config.Config, cache *cache.Cache) *MusicHandler {
 func (h *MusicHandler) CurrentlyListening(c fiber.Ctx) error {
 	cachedData := h.cache.Get("currentlyListening")
 	if cachedData != nil {
-		c.Set("X-Cached", "true")
+		h.cache.SetHeader(c, "currentlyListening")
 		return c.JSON(cachedData)
 	}
 
@@ -39,7 +39,7 @@ func (h *MusicHandler) CurrentlyListening(c fiber.Ctx) error {
 func (h *MusicHandler) TopAlbums(c fiber.Ctx) error {
 	cachedData := h.cache.Get("topAlbums")
 	if cachedData != nil {
-		c.Set("X-Cached", "true")
+		h.cache.SetHeader(c, "topAlbums")
 		return c.JSON(cachedData)
 	}
 
@@ -66,7 +66,7 @@ func (h *MusicHandler) AlbumInfo(c fiber.Ctx) error {
 	cacheKey := "albumInfo:" + artist + ":" + album
 	cachedData := h.cache.Get(cacheKey)
 	if cachedData != nil {
-		c.Set("X-Cached", "true")
+		h.cache.SetHeader(c, cacheKey)
 		return c.JSON(cachedData)
 	}
 

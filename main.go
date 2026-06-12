@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -12,9 +13,10 @@ import (
 )
 
 func main() {
+	appCtx, cancel := context.WithCancel(context.Background())
 	cfg := config.Load()
 
-	cache := cache.NewCache()
+	cache := cache.NewCache(appCtx)
 
 	app := fiber.New(fiber.Config{
 		AppName:    "api-portfolio",
@@ -23,6 +25,11 @@ func main() {
 			Proxies: []string{"192.168.1.188"},
 		},
 		ProxyHeader: "Cf-Connecting-Ip",
+	})
+
+	app.Hooks().OnPostShutdown(func(e error) error {
+		cancel()
+		return nil
 	})
 
 	allowedOrigins := []string{
