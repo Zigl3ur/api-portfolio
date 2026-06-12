@@ -52,30 +52,3 @@ func (h *MusicHandler) TopAlbums(c fiber.Ctx) error {
 
 	return c.JSON(data)
 }
-
-func (h *MusicHandler) AlbumInfo(c fiber.Ctx) error {
-	artist := c.Query("artist")
-	album := c.Query("album")
-
-	if artist == "" || album == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "artist and album query parameters are required",
-		})
-	}
-
-	cacheKey := "albumInfo:" + artist + ":" + album
-	cachedData := h.cache.Get(cacheKey)
-	if cachedData != nil {
-		h.cache.SetHeader(c, cacheKey)
-		return c.JSON(cachedData)
-	}
-
-	data, err := h.lastfm.GetAlbumInfo(artist, album)
-	if err != nil {
-		return err
-	}
-
-	h.cache.Set(cacheKey, data, 1*time.Hour)
-
-	return c.JSON(data)
-}
