@@ -41,9 +41,10 @@ func main() {
 	}
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: allowedOrigins,
-		AllowHeaders: []string{"Origin", "Content-Type", "Accept"},
-		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowOrigins:  allowedOrigins,
+		AllowHeaders:  []string{"Origin", "Content-Type", "Accept"},
+		AllowMethods:  []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		ExposeHeaders: []string{"X-Cache"},
 	}))
 
 	musicHandler := handlers.NewMusicHandler(cfg, cache)
