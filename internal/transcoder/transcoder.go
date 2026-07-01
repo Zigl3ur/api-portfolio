@@ -59,8 +59,8 @@ func (t *Transcoder) GeneratePlaylistFile(path string, video VideoData) error {
 
 	for key, value := range t.Formats {
 		var res string
+		width, height, fps, err := GetVideoResolution(video.Path)
 		if key == "source" {
-			width, height, err := GetVideoResolution(video.Path)
 			if err != nil {
 				return fmt.Errorf("error getting video resolution for source: %v", err)
 			}
@@ -69,7 +69,7 @@ func (t *Transcoder) GeneratePlaylistFile(path string, video VideoData) error {
 			res = fmt.Sprintf("%dx%d", value.Width, value.Height)
 		}
 
-		fmt.Fprintf(&content, "#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%s\n", value.Bitrate, res)
+		fmt.Fprintf(&content, "#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%s,FRAME-RATE=%s\n", value.Bitrate, res, fps)
 		fmt.Fprintf(&content, "%s/playlist.m3u8\n", key)
 	}
 
@@ -91,36 +91,45 @@ func rotateSide(angle int) string {
 
 type probeResult struct {
 	Streams []struct {
-		Width  int `json:"width"`
-		Height int `json:"height"`
+		Width     int    `json:"width"`
+		Height    int    `json:"height"`
+		FrameRate string `json:"r_frame_rate"`
 	} `json:"streams"`
 }
 
-func GetVideoResolution(path string) (width, height int, err error) {
+func GetVideoResolution(path string) (width, height int, fps string, err error) {
 	cmd := exec.Command("ffprobe",
 		"-v", "error",
 		"-select_streams", "v:0",
-		"-show_entries", "stream=width,height,bit_rate",
-		"-show_entries", "format=bit_rate",
+		"-show_entries", "stream=width,height,r_frame_rate",
 		"-of", "json",
 		path,
 	)
 
 	out, err := cmd.Output()
 	if err != nil {
-		return 0, 0, fmt.Errorf("ffprobe failed: %w", err)
+		return 0, 0, "", fmt.Errorf("ffprobe failed: %w", err)
 	}
 
 	var result probeResult
 	if err := json.Unmarshal(out, &result); err != nil {
-		return 0, 0, fmt.Errorf("failed to parse ffprobe output: %w", err)
+		return 0, 0, "", fmt.Errorf("failed to parse ffprobe output: %w", err)
 	}
 
 	if len(result.Streams) == 0 {
-		return 0, 0, fmt.Errorf("no video stream found in %s", path)
+		return 0, 0, "", fmt.Errorf("no video stream found in %s", path)
 	}
 
-	return result.Streams[0].Width, result.Streams[0].Height, nil
+	frameRate := strings.Split(result.Streams[0].FrameRate, "/")
+	var fpsFormat string
+	if len(frameRate) == 2 {
+		num, _ := strconv.Atoi(frameRate[0])
+		den, _ := strconv.Atoi(frameRate[1])
+
+		fpsFormat = fmt.Sprintf("%.2f", float64(num)/float64(den))
+	}
+
+	return result.Streams[0].Width, result.Streams[0].Height, fpsFormat, nil
 }
 
 func (t *Transcoder) BuildCmd(video VideoData, specs FormatSpec, rotate int) *exec.Cmd {
