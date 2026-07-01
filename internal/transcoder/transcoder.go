@@ -63,7 +63,7 @@ func (t *Transcoder) GeneratePlaylistFile(path string, video VideoData) error {
 		if key == "source" {
 			width, height, br, err := GetVideoResolution(video.Path)
 			if err != nil {
-				return fmt.Errorf("Error getting video resolution for source: %v", err)
+				return fmt.Errorf("error getting video resolution for source: %v", err)
 			}
 			bitrate = br / 1000
 			res = fmt.Sprintf("%dx%d", width, height)
@@ -184,14 +184,14 @@ func (t *Transcoder) TranscodeAll() error {
 	for _, video := range t.Videos {
 		videoDir := filepath.Join(t.destinationDir, video.Name)
 		if err := os.MkdirAll(videoDir, 0755); err != nil {
-			return fmt.Errorf("Error creating video directory %s: %v", videoDir, err)
+			return fmt.Errorf("error creating video directory %s: %v", videoDir, err)
 		}
 
 		for res, specs := range t.Formats {
 			outDir := filepath.Join(videoDir, res)
 			fmt.Println("Transcoding video:", video.Name, "to resolution:", res+"p", "in directory:", outDir)
 			if err := os.MkdirAll(outDir, 0755); err != nil {
-				return fmt.Errorf("Error creating output directory %s: %v", outDir, err)
+				return fmt.Errorf("error creating output directory %s: %v", outDir, err)
 			}
 
 			cmd := t.BuildCmd(video, specs, video.Rotate)
@@ -200,12 +200,12 @@ func (t *Transcoder) TranscodeAll() error {
 			cmd.Stderr = os.Stderr
 
 			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("Error transcoding video %s to resolution %s: %v\n", video.Name, res, err)
+				return fmt.Errorf("error transcoding video %s to resolution %s: %v", video.Name, res, err)
 			}
 		}
 
 		if err := t.GeneratePlaylistFile(videoDir, video); err != nil {
-			return fmt.Errorf("Error generating playlist for video %s: %v", video.Name, err)
+			return fmt.Errorf("error generating playlist for video %s: %v", video.Name, err)
 		}
 	}
 
