@@ -30,10 +30,10 @@ type FormatSpec struct {
 type Transcoder struct {
 	destinationDir string
 	Videos         []VideoData
-	Formats        map[string]*FormatSpec
+	Formats        map[string]FormatSpec
 }
 
-func NewTranscoder(destinationDir string, videos []VideoData, formats map[string]*FormatSpec) *Transcoder {
+func NewTranscoder(destinationDir string, videos []VideoData, formats map[string]FormatSpec) *Transcoder {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		panic(fmt.Sprintf("ffmpeg not found, %v", err))
 	}
@@ -58,21 +58,18 @@ func (t *Transcoder) GeneratePlaylistFile(path string, video VideoData) error {
 	content.WriteString("#EXTM3U\n")
 
 	for key, value := range t.Formats {
-		var bitrate int
 		var res string
 		if key == "source" {
-			width, height, br, err := GetVideoResolution(video.Path)
+			width, height, err := GetVideoResolution(video.Path)
 			if err != nil {
 				return fmt.Errorf("error getting video resolution for source: %v", err)
 			}
-			bitrate = br / 1000
 			res = fmt.Sprintf("%dx%d", width, height)
 		} else {
-			bitrate = value.Bitrate
 			res = fmt.Sprintf("%dx%d", value.Width, value.Height)
 		}
 
-		fmt.Fprintf(&content, "#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%s\n", bitrate, res)
+		fmt.Fprintf(&content, "#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%s\n", value.Bitrate, res)
 		fmt.Fprintf(&content, "%s/playlist.m3u8\n", key)
 	}
 
@@ -94,13 +91,12 @@ func rotateSide(angle int) string {
 
 type probeResult struct {
 	Streams []struct {
-		Width   int `json:"width"`
-		Height  int `json:"height"`
-		BitRate int `json:"bit_rate,string"`
+		Width  int `json:"width"`
+		Height int `json:"height"`
 	} `json:"streams"`
 }
 
-func GetVideoResolution(path string) (width, height, bitrate int, err error) {
+func GetVideoResolution(path string) (width, height int, err error) {
 	cmd := exec.Command("ffprobe",
 		"-v", "error",
 		"-select_streams", "v:0",
@@ -112,22 +108,22 @@ func GetVideoResolution(path string) (width, height, bitrate int, err error) {
 
 	out, err := cmd.Output()
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("ffprobe failed: %w", err)
+		return 0, 0, fmt.Errorf("ffprobe failed: %w", err)
 	}
 
 	var result probeResult
 	if err := json.Unmarshal(out, &result); err != nil {
-		return 0, 0, 0, fmt.Errorf("failed to parse ffprobe output: %w", err)
+		return 0, 0, fmt.Errorf("failed to parse ffprobe output: %w", err)
 	}
 
 	if len(result.Streams) == 0 {
-		return 0, 0, 0, fmt.Errorf("no video stream found in %s", path)
+		return 0, 0, fmt.Errorf("no video stream found in %s", path)
 	}
 
-	return result.Streams[0].Width, result.Streams[0].Height, result.Streams[0].BitRate, nil
+	return result.Streams[0].Width, result.Streams[0].Height, nil
 }
 
-func (t *Transcoder) BuildCmd(video VideoData, specs *FormatSpec, rotate int) *exec.Cmd {
+func (t *Transcoder) BuildCmd(video VideoData, specs FormatSpec, rotate int) *exec.Cmd {
 	var vf strings.Builder
 
 	rotation := rotateSide(rotate)
@@ -138,19 +134,19 @@ func (t *Transcoder) BuildCmd(video VideoData, specs *FormatSpec, rotate int) *e
 	resLabel := "source"
 	var audioArgs, videoArgs []string
 
-	if specs != nil {
+	if specs.Width > 0 && specs.Height > 0 {
+		resLabel = strconv.Itoa(specs.Height)
 		if vf.Len() > 0 {
 			vf.WriteString(",")
 		}
 		fmt.Fprintf(&vf, "scale_vaapi=w=%d:h=%d", specs.Width, specs.Height)
-		resLabel = strconv.Itoa(specs.Height)
+	}
 
-		audioArgs = []string{"-b:a", fmt.Sprintf("%dk", specs.AudioBitrate)}
-		videoArgs = []string{
-			"-b:v", fmt.Sprintf("%dk", specs.Bitrate),
-			"-maxrate", fmt.Sprintf("%dk", specs.Maxrate),
-			"-bufsize", fmt.Sprintf("%dk", specs.Bufsize),
-		}
+	audioArgs = []string{"-b:a", fmt.Sprintf("%dk", specs.AudioBitrate)}
+	videoArgs = []string{
+		"-b:v", fmt.Sprintf("%dk", specs.Bitrate),
+		"-maxrate", fmt.Sprintf("%dk", specs.Maxrate),
+		"-bufsize", fmt.Sprintf("%dk", specs.Bufsize),
 	}
 
 	args := []string{
@@ -167,7 +163,7 @@ func (t *Transcoder) BuildCmd(video VideoData, specs *FormatSpec, rotate int) *e
 	args = append(args, videoArgs...)
 	args = append(args,
 		"-c:v", "h264_vaapi", "-profile:v", "main",
-		"-g", "48", "-keyint_min", "48",
+		"-force_key_frames", "expr:gte(t,n_forced*6)", "-sc_threshold", "0",
 		"-hls_time", "6", "-hls_playlist_type", "vod",
 	)
 	args = append(args,

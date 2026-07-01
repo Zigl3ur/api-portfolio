@@ -7,8 +7,8 @@ import (
 	"github.com/Zigl3ur/api-portfolio/internal/transcoder"
 )
 
-var formats = map[string]*transcoder.FormatSpec{
-	"source": nil,
+var formats = map[string]transcoder.FormatSpec{
+	"source": {Bitrate: 12000, Maxrate: 16000, Bufsize: 24000, AudioBitrate: 192},
 	"1080":   {Width: 1920, Height: 1080, Bitrate: 5000, Maxrate: 5350, Bufsize: 7500, AudioBitrate: 128},
 	"720":    {Width: 1280, Height: 720, Bitrate: 2800, Maxrate: 2996, Bufsize: 4200, AudioBitrate: 128},
 	"480":    {Width: 854, Height: 480, Bitrate: 1400, Maxrate: 1498, Bufsize: 2100, AudioBitrate: 96},
