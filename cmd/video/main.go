@@ -1,15 +1,13 @@
-//go:build ignore
-
 package main
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/Zigl3ur/api-portfolio/cmd/video"
+	"github.com/Zigl3ur/api-portfolio/internal/transcoder"
 )
 
-var formats = map[string]*video.FormatSpec{
+var formats = map[string]*transcoder.FormatSpec{
 	"source": nil,
 	"1080":   {Width: 1920, Height: 1080, Bitrate: 5000, Maxrate: 5350, Bufsize: 7500, AudioBitrate: 128},
 	"720":    {Width: 1280, Height: 720, Bitrate: 2800, Maxrate: 2996, Bufsize: 4200, AudioBitrate: 128},
@@ -25,14 +23,14 @@ func main() {
 
 	outDir := os.Args[1]
 
-	videos := []video.VideoData{
+	videos := []transcoder.VideoData{
 		{Path: "/home/eden/Downloads/PXL_20260616_205907809.mp4", Name: "lp_1", Rotate: 90},
 		{Path: "/home/eden/Downloads/IMG_4992.MP4", Name: "gaga_1"},
 	}
 
-	transcoder := video.NewTranscoder(outDir, videos, formats)
+	t := transcoder.NewTranscoder(outDir, videos, formats)
 
-	if err := transcoder.TranscodeAll(); err != nil {
+	if err := t.TranscodeAll(); err != nil {
 		fmt.Printf("Error transcoding videos: %v\n", err)
 		os.Exit(1)
 	}

@@ -1,6 +1,4 @@
-//go:build ignore
-
-package video
+package transcoder
 
 import (
 	"bytes"
