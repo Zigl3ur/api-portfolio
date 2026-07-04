@@ -11,7 +11,6 @@ func SetupRoutes(app *fiber.App, musicHandler *handlers.MusicHandler, messageHan
 	musicGroup := app.Group("/music")
 	musicGroup.Get("/currently-listening", musicHandler.CurrentlyListening)
 	musicGroup.Get("/top-albums", musicHandler.TopAlbums)
-	musicGroup.Get("/top-tracks", musicHandler.TopTracks)
 
 	app.Post("/message", handlers.MessageLimiter, messageHandler.Handler)
 
