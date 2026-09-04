@@ -56,11 +56,19 @@ func NewTranscoder(destinationDir string, videos []VideoData, formats map[string
 func (t *Transcoder) GeneratePlaylistFile(path string, video VideoData) error {
 	var content bytes.Buffer
 	content.WriteString("#EXTM3U\n")
+	sourceHeight := 0
 
 	for key, value := range t.Formats {
+		// skip the resolution that is the same as the source video
+		if value.Height == sourceHeight && sourceHeight != 0 {
+			continue
+		}
+
 		var res string
 		width, height, fps, err := GetVideoResolution(video.Path)
 		if key == "source" {
+			sourceHeight = height
+
 			if err != nil {
 				return fmt.Errorf("error getting video resolution for source: %v", err)
 			}
@@ -132,7 +140,7 @@ func GetVideoResolution(path string) (width, height int, fps string, err error) 
 	return result.Streams[0].Width, result.Streams[0].Height, fpsFormat, nil
 }
 
-func (t *Transcoder) BuildCmd(video VideoData, specs FormatSpec, rotate int) *exec.Cmd {
+func (t *Transcoder) BuildCmd(video VideoData, specs FormatSpec, resLabel string, rotate int) *exec.Cmd {
 	var vf strings.Builder
 
 	rotation := rotateSide(rotate)
@@ -140,15 +148,18 @@ func (t *Transcoder) BuildCmd(video VideoData, specs FormatSpec, rotate int) *ex
 		fmt.Fprintf(&vf, "transpose_vaapi=dir=%s", rotation)
 	}
 
-	resLabel := "source"
 	var audioArgs, videoArgs []string
 
 	if specs.Width > 0 && specs.Height > 0 {
-		resLabel = strconv.Itoa(specs.Height)
 		if vf.Len() > 0 {
 			vf.WriteString(",")
 		}
-		fmt.Fprintf(&vf, "scale_vaapi=w=%d:h=%d", specs.Width, specs.Height)
+		fmt.Fprintf(&vf, "scale_vaapi=w=%d:h=%d:format=nv12", specs.Width, specs.Height)
+	} else {
+		if vf.Len() > 0 {
+			vf.WriteString(",")
+		}
+		vf.WriteString("scale_vaapi=format=nv12")
 	}
 
 	audioArgs = []string{"-b:a", fmt.Sprintf("%dk", specs.AudioBitrate)}
@@ -192,14 +203,19 @@ func (t *Transcoder) TranscodeAll() error {
 			return fmt.Errorf("error creating video directory %s: %v", videoDir, err)
 		}
 
+		_, height, _, _ := GetVideoResolution(video.Path)
 		for res, specs := range t.Formats {
+			if specs.Height == height && res != "source" {
+				continue
+			}
+
 			outDir := filepath.Join(videoDir, res)
 			fmt.Println("Transcoding video:", video.Name, "to resolution:", res+"p", "in directory:", outDir)
 			if err := os.MkdirAll(outDir, 0755); err != nil {
 				return fmt.Errorf("error creating output directory %s: %v", outDir, err)
 			}
 
-			cmd := t.BuildCmd(video, specs, video.Rotate)
+			cmd := t.BuildCmd(video, specs, res, video.Rotate)
 			cmd.Dir = videoDir
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr

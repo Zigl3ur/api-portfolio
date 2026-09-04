@@ -52,37 +52,3 @@ func (h *MusicHandler) TopAlbums(c fiber.Ctx) error {
 
 	return c.JSON(data)
 }
-
-func (h *MusicHandler) TopTracks(c fiber.Ctx) error {
-	cachedData := h.cache.Get("topTracks")
-	if cachedData != nil {
-		h.cache.SetHeader(c, "topTracks")
-		return c.JSON(cachedData)
-	}
-
-	data, err := h.lastfm.GetTopTracks()
-	if err != nil {
-		return err
-	}
-
-	h.cache.Set("topTracks", data, 1*time.Hour)
-
-	return c.JSON(data)
-}
-
-func (h *MusicHandler) TopArtists(c fiber.Ctx) error {
-	cachedData := h.cache.Get("topArtists")
-	if cachedData != nil {
-		h.cache.SetHeader(c, "topArtists")
-		return c.JSON(cachedData)
-	}
-
-	data, err := h.lastfm.GetTopArtists()
-	if err != nil {
-		return err
-	}
-
-	h.cache.Set("topArtists", data, 1*time.Hour)
-
-	return c.JSON(data)
-}
