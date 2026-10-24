@@ -52,3 +52,20 @@ func (h *MusicHandler) TopAlbums(c fiber.Ctx) error {
 
 	return c.JSON(data)
 }
+
+func (h *MusicHandler) RecentTracks(c fiber.Ctx) error {
+	cachedData := h.cache.Get("recentTracks")
+	if cachedData != nil {
+		h.cache.SetHeader(c, "recentTracks")
+		return c.JSON(cachedData)
+	}
+
+	data, err := h.lastfm.GetRecentTracks()
+	if err != nil {
+		return err
+	}
+
+	h.cache.Set("recentTracks", data, 1*time.Minute)
+
+	return c.JSON(data)
+}

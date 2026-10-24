@@ -10,7 +10,6 @@ import (
 
 type LastFM struct {
 	username string
-	baseUrl  string
 	client   *client.Client
 	apiKey   string
 }
@@ -18,8 +17,7 @@ type LastFM struct {
 func NewLastFM(apiKey string, username string) *LastFM {
 	return &LastFM{
 		username: username,
-		baseUrl:  "https://ws.audioscrobbler.com/2.0",
-		client:   client.New(),
+		client:   client.New().SetBaseURL("https://ws.audioscrobbler.com/2.0"),
 		apiKey:   apiKey,
 	}
 }
@@ -90,20 +88,73 @@ type Track struct {
 	ListenedAt string `json:"listenedAt,omitempty"`
 }
 
-func (lfm *LastFM) GetCurrentlyPlaying() (*CurrentlyListening, error) {
-	dataFormat := &CurrentlyListening{
-		IsListening: false,
-	}
+type RecentTrack struct {
+	Artist       string `json:"artist"`
+	Album        string `json:"album,omitempty"`
+	TrackName    string `json:"name"`
+	Image        string `json:"image"`
+	Url          string `json:"url"`
+	IsListening  bool   `json:"isListening"`
+	LastListened string `json:"lastListened"`
+}
 
-	resp, err := lfm.client.Get(fmt.Sprintf("%s/?method=user.getRecentTracks&user=%s&api_key=%s&format=json", lfm.baseUrl, lfm.username, lfm.apiKey))
+func (lfm *LastFM) getRecentTracks() (*lastfmRecentTrack, error) {
+	resp, err := lfm.client.Get(fmt.Sprintf("/?method=user.getRecentTracks&user=%s&api_key=%s&format=json", lfm.username, lfm.apiKey))
 	if err != nil {
-		return dataFormat, err
+		return nil, err
 	}
 
 	defer resp.Close()
 
 	var data lastfmRecentTrack
 	if err = json.Unmarshal(resp.Body(), &data); err != nil {
+		return nil, err
+	}
+
+	return &data, nil
+}
+
+func (lfm *LastFM) GetRecentTracks() ([]RecentTrack, error) {
+	data, err := lfm.getRecentTracks()
+	if err != nil {
+		return nil, err
+	}
+
+	tracks := make([]RecentTrack, 0, len(data.RecentTracks.Track))
+
+	for _, t := range data.RecentTracks.Track {
+		track := RecentTrack{
+			Artist:       t.Artist.Name,
+			Album:        t.Album.Name,
+			TrackName:    t.TrackName,
+			Url:          t.TrackUrl,
+			LastListened: t.Date.Uts,
+		}
+
+		if t.Attr.IsPlaying != "" {
+			track.IsListening = true
+		}
+
+		for _, img := range t.Images {
+			if img.Size == "large" {
+				track.Image = getAr0ImageUrl(img.Url)
+				break
+			}
+		}
+
+		tracks = append(tracks, track)
+	}
+
+	return tracks, nil
+}
+
+func (lfm *LastFM) GetCurrentlyPlaying() (*CurrentlyListening, error) {
+	dataFormat := &CurrentlyListening{
+		IsListening: false,
+	}
+
+	data, err := lfm.getRecentTracks()
+	if err != nil {
 		return dataFormat, err
 	}
 
@@ -135,7 +186,7 @@ func (lfm *LastFM) GetCurrentlyPlaying() (*CurrentlyListening, error) {
 }
 
 func (lfm *LastFM) GetTopAlbums() ([]Album, error) {
-	resp, err := lfm.client.Get(fmt.Sprintf("%s/?method=user.getTopAlbums&user=%s&api_key=%s&limit=100&format=json", lfm.baseUrl, lfm.username, lfm.apiKey))
+	resp, err := lfm.client.Get(fmt.Sprintf("/?method=user.getTopAlbums&user=%s&api_key=%s&limit=100&format=json", lfm.username, lfm.apiKey))
 	if err != nil {
 		return nil, err
 	}
