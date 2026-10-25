@@ -31,6 +31,7 @@ jobs:
                     docker rm api-portfolio
                     docker run -d \
                         --name api-portfolio \
+                        -e LASTFM_USERNAME=${{secrets.LASTFM_USERNAME}} \
                         -e LASTFM_API_KEY=${{secrets.LASTFM_API_KEY}} \
                         -e DISCORD_WEBHOOK=${{secrets.DISCORD_WEBHOOK_URL}} \
                         --restart unless-stopped \
