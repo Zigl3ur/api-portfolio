@@ -8,9 +8,9 @@ import (
 	"github.com/Zigl3ur/api-portfolio/internal/cache"
 	"github.com/Zigl3ur/api-portfolio/internal/config"
 	"github.com/Zigl3ur/api-portfolio/internal/handlers"
+	"github.com/Zigl3ur/api-portfolio/internal/router"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
-	"github.com/gofiber/fiber/v3/middleware/static"
 )
 
 func main() {
@@ -51,13 +51,7 @@ func main() {
 	musicHandler := handlers.NewMusicHandler(cfg, cache)
 	messageHandler := handlers.NewMessageHandler(cfg)
 
-	musicGroup := app.Group("/music")
-	musicGroup.Get("/currently-listening", musicHandler.CurrentlyListening)
-	musicGroup.Get("/top-albums", musicHandler.TopAlbums)
-
-	app.Get("/videos*", static.New("./videos"))
-
-	app.Post("/message", handlers.MessageLimiter, messageHandler.Handler)
+	router.SetupRoutes(app, musicHandler, messageHandler)
 
 	app.Use(func(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNotFound)
